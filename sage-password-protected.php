@@ -1,13 +1,29 @@
 <?php
-
-namespace App\PasswordProtected;
-
 /**
- * Return if Password Protected already exists.
+ * Sage Password Protected
+ *
+ * @copyright    Copyright (C) 2023, Adeliom - io@adeliom.com
+ * @link         https://adeliom.io
+ *
+ * @wordpress-plugin
+ * Plugin Name:       Sage Password Protected
+ * Version:           1.0.0
+ * Plugin URI:        https://adeliom.io/
+ * Description:       An simple password protection package for Roots Sage customizable with filters.
+ * Author:            Adeliom
+ * Author URI:        https://adeliom.com/?utm_source=Plugin&utm_medium=Readme%20Author%20URI&utm_campaign=WP
+ * License:           MIT
+ * License URI:       https://choosealicense.com/licenses/mit/
+ * Text Domain:       sage-password-protected
+ * Domain Path:       /languages
  */
-if (class_exists('PasswordProtected')) {
-    return;
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
 }
+
+define('SAGE_PASSWORD_PROTECTED_VERSION', '1.0.0');
+define('SAGE_PASSWORD_PROTECTED_ABSPATH', dirname( plugin_basename( __FILE__ ) ));
 
 /**
  * Password Protected
@@ -42,31 +58,45 @@ class PasswordProtected
      */
     protected $secret = '_this_is_very_secure';
 
+    private static $_instance = null;
+
+    public static function getInstance() {
+
+        if(is_null(self::$_instance)) {
+            self::$_instance = new self();
+        }
+
+        return self::$_instance;
+    }
+
     /**
      * Constructor
      */
     public function __construct()
     {
-        /** Return if Sage is not present. */
-        if (!function_exists('App\sage')) {
-            return;
-        }
-
+        load_plugin_textdomain('sage-password-protected', false, SAGE_PASSWORD_PROTECTED_ABSPATH . '/languages');
         /** Hooks */
         add_action('init', [$this, 'disableCaching'], 1);
         add_action('init', [$this, 'processLogin'], 1);
         add_action('wp', [$this, 'disableFeeds']);
         add_action('template_redirect', [$this, 'showLogin'], -1);
 
+        if(!function_exists('get_field')){
+            function get_field($selector, $post_id = false)
+            {
+                return null;
+            }
+        }
+
         /** Configuration */
         $this->defaults = [
-            'active'             => false,
-            'password'           => false,
+            'active'             => get_field('password_protected', 'option') ?? false,
+            'password'           => get_field('password', 'option') ??  false,
             'secret'             => $this->secret,
             'allowFeeds'         => false,
-            'allowAdmins'        => false,
-            'allowUsers'         => false,
-            'allowIpAddresses'   => false,
+            'allowAdmins'        => get_field('password_allow_administrators', 'option') ??  false,
+            'allowUsers'         => get_field('password_allow_users', 'option') ??  false,
+            'allowIpAddresses'   => get_field('password_allowed_ip_addresses', 'option') ??  false,
             'allowedIpAddresses' => [],
             'title'              => $this->name()
         ];
@@ -89,7 +119,7 @@ class PasswordProtected
         }
 
         if (isset($_REQUEST['password_protected']) && $_REQUEST['password_protected'] == 'login') {
-            echo \App\template(__DIR__.'/views/password-protected.blade.php', [
+            echo \Roots\view( __DIR__ . '/views/password-protected.blade.php', [
                 'password' => $this
             ]);
 
@@ -120,7 +150,7 @@ class PasswordProtected
             }
 
             $this->unsetCookie();
-            $this->errors->add('invalid_password', __('The password you have entered is incorrect.', 'app'));
+            $this->errors->add('invalid_password', __('<strong>Error:</strong> The passwords do not match.'));
         }
     }
 
@@ -279,7 +309,7 @@ class PasswordProtected
      */
     protected function verifyPassword($password)
     {
-        return password_verify($password, $this->getPassword());
+        return $password === $this->getPassword();
     }
 
     /**
@@ -333,7 +363,26 @@ class PasswordProtected
      */
     public function name()
     {
-        return get_bloginfo('name');
+        $login_header_title = get_bloginfo('name');
+        $login_header_title = apply_filters_deprecated(
+            'login_headertitle',
+            array( $login_header_title ),
+            '5.2.0',
+            'login_headertext',
+            __( 'Usage of the title attribute on the login logo is not recommended for accessibility reasons. Use the link text instead.' )
+        );
+
+        return empty( $login_header_title ) ? __( 'Powered by WordPress' ) : $login_header_title;
+    }
+
+    /**
+     * Returns the blog title.
+     *
+     * @return string
+     */
+    public function text()
+    {
+        return apply_filters( 'login_headertext', $this->title() );
     }
 
     /**
@@ -460,8 +509,6 @@ class PasswordProtected
 /**
  * Initalize with after_setup_theme to assure Sage is loaded.
  */
-if (function_exists('add_action')) {
-    add_action('after_setup_theme', function () {
-        return new PasswordProtected();
-    }, 20);
-}
+add_action('init', function () {
+    PasswordProtected::getInstance();
+}, 0);

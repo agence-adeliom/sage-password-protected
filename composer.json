@@ -1,10 +1,14 @@
 {
-  "name": "log1x/sage-password-protected",
-  "type": "package",
+  "name": "agence-adeliom/sage-password-protected",
+  "type": "wordpress-plugin",
   "license": "MIT",
   "description": "A simple password protection package for Roots Sage customizable with filters.",
   "homepage": "https://github.com/log1x/sage-password-protected",
   "authors": [
+    {
+      "name": "Arnaud RITTI",
+      "email": "arnaud.ritti@adeliom.com"
+    },
     {
       "name": "Brandon Nifong",
       "email": "brandon@tendency.me"
@@ -21,12 +25,22 @@
     "issues": "https://github.com/log1x/sage-password-protected/issues"
   },
   "autoload": {
-    "files": [
-      "src/PasswordProtected.php"
-    ]
+    "psr-4": {
+      "Log1x\\PasswordProtected\\": "src/"
+    }
   },
   "require": {
-    "php": ">=7.0",
-    "composer/installers": "^1.0"
+    "php": ">=8.1",
+    "stoutlogic/acf-builder": "^1.11",
+    "log1x/acf-composer": "^2.1",
+    "composer/installers": "~1.0 || ~2.0"
+  },
+  "replace": {
+    "log1x/sage-password-protected": "1.*"
+  },
+  "config": {
+    "allow-plugins": {
+      "composer/installers": true
+    }
   }
 }
